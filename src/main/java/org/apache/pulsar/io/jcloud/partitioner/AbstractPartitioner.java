@@ -21,6 +21,8 @@ package org.apache.pulsar.io.jcloud.partitioner;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.common.naming.TopicName;
@@ -69,7 +71,9 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
             TopicName newTopicName = TopicName.get(topicName.getPartitionedTopicName());
             joinList.add(newTopicName.getLocalName());
         }
-        joinList.add(encodedPartition);
+        if (StringUtils.isNotBlank(encodedPartition)) {
+            joinList.add(encodedPartition);
+        }
         return StringUtils.join(joinList, PATH_SEPARATOR);
     }
 

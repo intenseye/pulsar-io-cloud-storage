@@ -37,6 +37,10 @@ configs:
   endpoint: "https://s3-ap-northeast-1.amazonaws.com"
   formatType: "parquet"
   partitionerType: "time"
+  fieldsPartitionIgnoreMissing: false
+  fieldsPartitionList:
+    - key1
+    - key2
   timePartitionPattern: "yyyy-MM-dd"
   timePartitionDuration: "1d"
   batchSize: 10

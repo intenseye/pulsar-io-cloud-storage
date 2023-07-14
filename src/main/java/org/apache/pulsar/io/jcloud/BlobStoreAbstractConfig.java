@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -99,6 +100,9 @@ public class BlobStoreAbstractConfig implements Serializable {
 
     private boolean sliceTopicPartitionPath;
 
+    private List<String> fieldsPartitionList;
+    private boolean fieldsPartitionIgnoreMissing = true;
+
     private long maxBatchBytes = 10_000_000;
     private int batchSize = 10;
     private int pendingQueueSize = -1;
@@ -159,6 +163,15 @@ public class BlobStoreAbstractConfig implements Serializable {
                         "timePartitionDuration invalid.");
             }
         }
+        if (PartitionerType.FIELDS.name().equalsIgnoreCase(partitionerType)) {
+            checkNotNull(fieldsPartitionList, "fieldsPartitionList not set.");
+            checkArgument(fieldsPartitionList.size() > 0,
+                    "fieldsPartitionList property must contain at least one field name.");
+            // check if any of them is empty
+            checkArgument(fieldsPartitionList.stream().allMatch(StringUtils::isNotBlank),
+                    "fieldsPartitionList property must not contain empty field names.");
+        }
+
         checkArgument(batchSize > 0, "batchSize must be a positive integer.");
         checkArgument(batchTimeMs > 0, "batchTimeMs must be a positive long.");
         checkArgument(maxBatchBytes > 0, "maxBatchBytes must be a positive long.");
