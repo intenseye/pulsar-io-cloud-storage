@@ -20,6 +20,8 @@ package org.apache.pulsar.io.jcloud;
 
 import static org.apache.pulsar.io.jcloud.BlobStoreAbstractConfig.PROVIDER_AWSS3;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.pulsar.io.common.IOConfigUtils;
@@ -49,6 +51,8 @@ public class ConnectorConfigTest {
         config.put("partitionerType", "default");
         config.put("timePartitionPattern", "yyyy-MM-dd");
         config.put("timePartitionDuration", "2d");
+        config.put("fieldsPartitionList", Arrays.asList("field1", "field2"));
+        config.put("fieldsPartitionIgnoreMissing", false);
         config.put("batchSize", 10);
         CloudStorageSinkConfig cloudStorageSinkConfig = CloudStorageSinkConfig.load(config);
         cloudStorageSinkConfig.validate();
@@ -63,6 +67,11 @@ public class ConnectorConfigTest {
         Assert.assertEquals(config.get("timePartitionPattern"), cloudStorageSinkConfig.getTimePartitionPattern());
         Assert.assertEquals(config.get("timePartitionDuration"), cloudStorageSinkConfig.getTimePartitionDuration());
         Assert.assertEquals(config.get("batchSize"), cloudStorageSinkConfig.getBatchSize());
+        Assert.assertEquals(config.get("fieldsPartitionList"), cloudStorageSinkConfig.getFieldsPartitionList());
+        Assert.assertEquals(
+            config.get("fieldsPartitionIgnoreMissing"),
+            cloudStorageSinkConfig.isFieldsPartitionIgnoreMissing()
+        );
         Assert.assertEquals((int) config.get("batchSize"), cloudStorageSinkConfig.getPendingQueueSize());
         Assert.assertEquals(10000000L, cloudStorageSinkConfig.getMaxBatchBytes());
     }
@@ -124,6 +133,49 @@ public class ConnectorConfigTest {
             CloudStorageSinkConfig.load(config).validate();
             Assert.fail();
         } catch (Exception e) {
+        }
+    }
+
+    @Test
+    public void fieldsPartitionDurationTest() throws IOException {
+        Map<String, Object> config = new HashMap<>();
+        config.put("provider", PROVIDER_AWSS3);
+        config.put("accessKeyId", "aws-s3");
+        config.put("secretAccessKey", "aws-s3");
+        config.put("bucket", "testbucket");
+        config.put("region", "localhost");
+        config.put("endpoint", "https://us-standard");
+        config.put("formatType", "avro");
+        config.put("partitionerType", "fields");
+        config.put("fieldsPartitionList", Arrays.asList("field1", "field2"));
+        config.put("fieldsPartitionIgnoreMissing", false);
+        config.put("batchSize", 10);
+        try {
+            CloudStorageSinkConfig.load(config).validate();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        config.remove("fieldsPartitionList");
+        Assert.assertThrows(NullPointerException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("fieldsPartitionList", Collections.<String>emptyList());
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("fieldsPartitionList", Arrays.asList("field1", ""));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("fieldsPartitionList", Arrays.asList("field1", "  "));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("fieldsPartitionList", Arrays.asList("field1", null));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        try {
+            config.put("fieldsPartitionList", Arrays.asList("field1", "  field2 "));
+            CloudStorageSinkConfig.load(config).validate();
+        } catch (Exception e) {
+            Assert.fail();
         }
     }
 
@@ -274,7 +326,7 @@ public class ConnectorConfigTest {
         try {
             cloudStorageSinkConfig.validate();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("partitionerType property not set properly, available options: partition,time",
+            Assert.assertEquals("partitionerType property not set properly, available options: partition,time,fields",
                     e.getMessage());
         }
         config.put("partitionerType", "invalid");
@@ -282,7 +334,7 @@ public class ConnectorConfigTest {
         try {
             cloudStorageSinkConfig.validate();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("partitionerType property not set properly, available options: partition,time",
+            Assert.assertEquals("partitionerType property not set properly, available options: partition,time,fields",
                     e.getMessage());
         }
         config.put("partitionerType", "default");
@@ -293,6 +345,14 @@ public class ConnectorConfigTest {
             cloudStorageSinkConfig = CloudStorageSinkConfig.load(config);
             cloudStorageSinkConfig.validate();
         }
+    }
+
+
+    @Test
+    public void testReadingListFromConfigFile() throws IOException {
+        var conf = CloudStorageSinkConfig.load("src/test/resources/sample-cloud-storage-sink-config.yaml");
+        Assert.assertEquals(conf.getFieldsPartitionList(), Arrays.asList("key1", "key2"));
+        Assert.assertEquals(conf.isFieldsPartitionIgnoreMissing(), true);
     }
 
 }
