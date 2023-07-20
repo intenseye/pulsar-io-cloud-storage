@@ -170,6 +170,7 @@ public class BlobStoreAbstractConfig implements Serializable {
             // check if any of them is empty
             checkArgument(fieldsPartitionList.stream().allMatch(StringUtils::isNotBlank),
                     "fieldsPartitionList property must not contain empty field names.");
+            LOGGER.info("test fieldsPartitionList is ok {}", fieldsPartitionList);
         }
 
         checkArgument(batchSize > 0, "batchSize must be a positive integer.");

@@ -75,6 +75,11 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
         return StringUtils.join(joinList, PATH_SEPARATOR);
     }
 
+    @Override
+    public String getBaseFileName(Record<T> record) {
+        return String.valueOf(getMessageOffset(record));
+    }
+
     protected long getMessageOffset(Record<T> record) {
         if (useIndexAsOffset && record.getMessage().isPresent()) {
             final Message<T> message = record.getMessage().get();

@@ -270,18 +270,20 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
             Map<String, List<Record<GenericRecord>>> recordsByPartitionPath = singleTopicRecordsToInsert.stream()
                     .collect(Collectors.groupingBy(record -> {
                         try {
-                            return buildPartitionPath(record, partitioner, format, timeStampForPartitioning);
+                            return partitioner.encodePartition(record, timeStampForPartitioning);
                         } catch (Exception e) {
                             log.error("Failed to build partition path for record {}", record, e);
                             return "";
                         }
                     }));
 
-            recordsByPartitionPath.forEach((filepath, records) -> {
+            recordsByPartitionPath.values().forEach(records -> {
+                String filepath = null;
                 try {
                     format.initSchema(schema);
                     final Iterator<Record<GenericRecord>> iter = records.iterator();
-                    filepath = buildPartitionPath(firstRecord, partitioner, format, timeStampForPartitioning);
+                    Record<GenericRecord> firstGroupRecord = records.get(0);
+                    filepath = buildPartitionPath(firstGroupRecord, partitioner, format, timeStampForPartitioning);
                     ByteBuffer payload = bindValue(iter, format);
                     int uploadSize = records.size();
                     long uploadBytes = getBytesSum(records);
@@ -345,7 +347,8 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
         String encodePartition = partitioner.encodePartition(message, partitioningTimestamp);
         String partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
-        String path = pathPrefix + partitionedPath + format.getExtension();
+        String filename = partitioner.getBaseFileName(message) + format.getExtension();
+        String path = pathPrefix + partitionedPath + Partitioner.PATH_SEPARATOR + filename;
         log.info("generate message[recordSequence={}] savePath: {}", message.getRecordSequence().get(), path);
         return path;
     }
