@@ -20,7 +20,6 @@ package org.apache.pulsar.io.jcloud.partitioner;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import com.google.common.base.Supplier;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Map;
@@ -54,6 +53,9 @@ public class PartitionerTest extends TestCase {
     public String expectedPartitionedPath;
 
     @Parameterized.Parameter(3)
+    public String expectedBaseFileName;
+
+    @Parameterized.Parameter(4)
     public Record<Object> pulsarRecord;
 
     @Parameterized.Parameters
@@ -98,74 +100,86 @@ public class PartitionerTest extends TestCase {
         return new Object[][]{
                 new Object[]{
                         simplePartitioner,
+                        "",
+                        "public/default/test",
                         "3221225506",
-                        "public/default/test" + Partitioner.PATH_SEPARATOR + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         simplePartitionerIndexOffset,
+                        "",
+                        "public/default/test",
                         "11115506",
-                        "public/default/test" + Partitioner.PATH_SEPARATOR + "11115506",
                         getTopic()
                 },
                 new Object[]{
                         dayPartitioner,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "public/default/test/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08",
+                        "public/default/test/2020-09-08",
+                        "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         hourPartitioner,
-                        "2020-09-08-12" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "public/default/test/2020-09-08-12" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08-12",
+                        "public/default/test/2020-09-08-12",
+                        "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         fieldsPartitioner,
                         "user1/US",
                         "public/default/test/user1/US",
+                        "3221225506",
                         getRecordWith(Map.of("userId", "user1", "region", "US"))
                 },
                 new Object[]{
                         fieldsPartitioner,
                         "user1",
                         "public/default/test/user1",
+                        "3221225506",
                         getRecordWith(Map.of("userId", "user1"))
                 },
                 new Object[]{
                         simplePartitioner,
+                        "",
+                        "public/default/test-partition-1",
                         "3221225506",
-                        "public/default/test-partition-1" + Partitioner.PATH_SEPARATOR + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         dayPartitioner,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "public/default/test-partition-1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08",
+                        "public/default/test-partition-1/2020-09-08",
+                        "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         hourPartitioner,
-                        "2020-09-08-12" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "public/default/test-partition-1/2020-09-08-12" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08-12",
+                        "public/default/test-partition-1/2020-09-08-12",
+                        "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         fieldsPartitioner,
                         "user1/US",
                         "public/default/test-partition-1/user1/US",
+                        "3221225506",
                         getPartitionedRecordWith(Map.of("userId", "user1", "region", "US"))
                 },
                 new Object[]{
                         noPartitionNumberPartitioner,
+                        "",
+                        "public/default/test",
                         "3221225506",
-                        "public/default/test" + Partitioner.PATH_SEPARATOR + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         numberPartitioner,
-                        "2020-09-08-14" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "public/default/test-partition-1/2020-09-08-14" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08-14",
+                        "public/default/test-partition-1/2020-09-08-14",
+                        "3221225506",
                         getPartitionedTopic()
                 },
         };
@@ -232,9 +246,8 @@ public class PartitionerTest extends TestCase {
     @Test
     public void testEncodePartition() {
         String encodePartition = partitioner.encodePartition(pulsarRecord, System.currentTimeMillis());
-        Supplier<String> supplier =
-                () -> MessageFormat.format("expected: {0}\nactual: {1}", expected, encodePartition);
-        Assert.assertEquals(supplier.get(), expected, encodePartition);
+        String message = MessageFormat.format("expected: {0}\nactual: {1}", expected, encodePartition);
+        Assert.assertEquals(message, expected, encodePartition);
     }
 
     @Test
@@ -243,8 +256,15 @@ public class PartitionerTest extends TestCase {
         String partitionedPath =
                 partitioner.generatePartitionedPath(pulsarRecord.getTopicName().get(), encodePartition);
 
-        Supplier<String> supplier =
-                () -> MessageFormat.format("expected: {0}\nactual: {1}", expected, encodePartition);
-        Assert.assertEquals(supplier.get(), expectedPartitionedPath, partitionedPath);
+        String message = MessageFormat.format("expected: {0}\nactual: {1}", expectedPartitionedPath, partitionedPath);
+        Assert.assertEquals(message, expectedPartitionedPath, partitionedPath);
+    }
+
+    @Test
+    public void testBaseFileName() {
+        String baseFileName = partitioner.getBaseFileName(pulsarRecord);
+
+        String message = MessageFormat.format("expected: {0}\nactual: {1}", expectedBaseFileName, baseFileName);
+        Assert.assertEquals(message, expectedBaseFileName, baseFileName);
     }
 }
