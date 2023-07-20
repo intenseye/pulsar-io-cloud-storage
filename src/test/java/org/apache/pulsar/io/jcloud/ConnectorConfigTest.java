@@ -350,7 +350,9 @@ public class ConnectorConfigTest {
 
     @Test
     public void testReadingListFromConfigFile() throws IOException {
-        var conf = CloudStorageSinkConfig.load("src/test/resources/sample-cloud-storage-sink-config.yaml");
+        CloudStorageSinkConfig conf = CloudStorageSinkConfig.load(
+            "src/test/resources/sample-cloud-storage-sink-config.yaml"
+        );
         Assert.assertEquals(conf.getFieldsPartitionList(), Arrays.asList("key1", "key2"));
         Assert.assertEquals(conf.isFieldsPartitionIgnoreMissing(), true);
     }
