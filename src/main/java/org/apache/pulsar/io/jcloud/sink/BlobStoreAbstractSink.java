@@ -267,46 +267,56 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                 bulkHandleFailedRecords(singleTopicRecordsToInsert);
                 return;
             }
+            Map<String, List<Record<GenericRecord>>> recordsByPartitionPath = singleTopicRecordsToInsert.stream()
+                    .collect(Collectors.groupingBy(record -> {
+                        try {
+                            return buildPartitionPath(record, partitioner, format, timeStampForPartitioning);
+                        } catch (Exception e) {
+                            log.error("Failed to build partition path for record {}", record, e);
+                            return "";
+                        }
+                    }));
 
-            String filepath = "";
-            try {
-                format.initSchema(schema);
-                final Iterator<Record<GenericRecord>> iter = singleTopicRecordsToInsert.iterator();
-                filepath = buildPartitionPath(firstRecord, partitioner, format, timeStampForPartitioning);
-                ByteBuffer payload = bindValue(iter, format);
-                int uploadSize = singleTopicRecordsToInsert.size();
-                long uploadBytes = getBytesSum(singleTopicRecordsToInsert);
-                log.info("Uploading blob {} from topic {} uploadSize {} out of currentBatchSize {} "
-                        + " uploadBytes {} out of currcurrentBatchBytes {}",
+            recordsByPartitionPath.forEach((filepath, records) -> {
+                try {
+                    format.initSchema(schema);
+                    final Iterator<Record<GenericRecord>> iter = records.iterator();
+                    filepath = buildPartitionPath(firstRecord, partitioner, format, timeStampForPartitioning);
+                    ByteBuffer payload = bindValue(iter, format);
+                    int uploadSize = records.size();
+                    long uploadBytes = getBytesSum(records);
+                    log.info("Uploading blob {} from topic {} uploadSize {} out of currentBatchSize {} "
+                            + " uploadBytes {} out of currentBatchBytes {}",
+                            filepath, entry.getKey(),
+                            uploadSize, currentBatchSize.get(),
+                            uploadBytes, currentBatchBytes.get());
+                    long elapsedMs = System.currentTimeMillis();
+                    uploadPayload(payload, filepath);
+                    elapsedMs = System.currentTimeMillis() - elapsedMs;
+                    log.debug("Uploading blob {} elapsed time in ms: {}", filepath, elapsedMs);
+                    records.forEach(Record::ack);
+                    currentBatchBytes.addAndGet(-1 * uploadBytes);
+                    currentBatchSize.addAndGet(-1 * uploadSize);
+                    if (sinkContext != null) {
+                        sinkContext.recordMetric(METRICS_TOTAL_SUCCESS, records.size());
+                        sinkContext.recordMetric(METRICS_LATEST_UPLOAD_ELAPSED_TIME, elapsedMs);
+                    }
+                    log.info("Successfully uploaded blob {} from topic {} uploadSize {} uploadBytes {}",
                         filepath, entry.getKey(),
-                        uploadSize, currentBatchSize.get(),
-                        uploadBytes, currentBatchBytes.get());
-                long elapsedMs = System.currentTimeMillis();
-                uploadPayload(payload, filepath);
-                elapsedMs = System.currentTimeMillis() - elapsedMs;
-                log.debug("Uploading blob {} elapsed time in ms: {}", filepath, elapsedMs);
-                singleTopicRecordsToInsert.forEach(Record::ack);
-                currentBatchBytes.addAndGet(-1 * uploadBytes);
-                currentBatchSize.addAndGet(-1 * uploadSize);
-                if (sinkContext != null) {
-                    sinkContext.recordMetric(METRICS_TOTAL_SUCCESS, singleTopicRecordsToInsert.size());
-                    sinkContext.recordMetric(METRICS_LATEST_UPLOAD_ELAPSED_TIME, elapsedMs);
+                        uploadSize, uploadBytes);
+                } catch (Exception e) {
+                    if (e instanceof ContainerNotFoundException) {
+                        log.error("Blob {} is not found", filepath, e);
+                    } else if (e instanceof IOException) {
+                        log.error("Failed to write to blob {}", filepath, e);
+                    } else if (e instanceof UnsupportedOperationException || e instanceof IllegalArgumentException) {
+                        log.error("Failed to handle message schema {}", schema, e);
+                    } else {
+                        log.error("Encountered unknown error writing to blob {}", filepath, e);
+                    }
+                    bulkHandleFailedRecords(records);
                 }
-                log.info("Successfully uploaded blob {} from topic {} uploadSize {} uploadBytes {}",
-                    filepath, entry.getKey(),
-                    uploadSize, uploadBytes);
-            } catch (Exception e) {
-                if (e instanceof ContainerNotFoundException) {
-                    log.error("Blob {} is not found", filepath, e);
-                } else if (e instanceof IOException) {
-                    log.error("Failed to write to blob {}", filepath, e);
-                } else if (e instanceof UnsupportedOperationException || e instanceof IllegalArgumentException) {
-                    log.error("Failed to handle message schema {}", schema, e);
-                } else {
-                    log.error("Encountered unknown error writing to blob {}", filepath, e);
-                }
-                bulkHandleFailedRecords(singleTopicRecordsToInsert);
-            }
+            });
         }
     }
 
