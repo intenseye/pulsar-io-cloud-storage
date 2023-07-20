@@ -35,9 +35,10 @@
   <description>Cloud Storage Connector integrates Apache Pulsar with Cloud Storage.</description>
 
   <properties>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
-    <java.version>17</java.version>
+    <java.version>11</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <maven.compiler.release>${java.version}</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <redirectTestOutputToFile>true</redirectTestOutputToFile>
@@ -48,7 +49,7 @@
     <jackson.version>2.13.2</jackson.version>
     <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <lombok.version>1.18.20</lombok.version>
-    <pulsar.version>2.11.0.4</pulsar.version>
+    <pulsar.version>2.9.2.24</pulsar.version>
     <parquet.version>1.12.2</parquet.version>
     <awsjavasdk.version>1.12.148</awsjavasdk.version>
     <aws.java.sdk2.version>2.16.1</aws.java.sdk2.version>
@@ -611,6 +612,7 @@
           <version>${maven-compiler-plugin.version}</version>
           <configuration>
             <encoding>UTF-8</encoding>
+            <release>${java.version}</release>
             <compilerArgs>
               <!--              <compilerArg>-Werror</compilerArg>-->
               <compilerArg>-Xlint:deprecation</compilerArg>
