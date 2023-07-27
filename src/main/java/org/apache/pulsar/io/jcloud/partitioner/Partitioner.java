@@ -63,4 +63,12 @@ public interface Partitioner<T> {
      * @return saved path
      */
     String generatePartitionedPath(String topic, String encodedPartition);
+
+    /**
+     * Returns the base file name for the given record.
+     *
+     * @param record The record obtain a base file name for
+     * @return The base file name for the given record
+     */
+    String getBaseFileName(Record<T> record);
 }

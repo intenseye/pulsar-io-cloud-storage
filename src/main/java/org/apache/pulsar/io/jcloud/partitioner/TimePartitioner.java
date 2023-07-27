@@ -94,10 +94,7 @@ public class TimePartitioner<T> extends AbstractPartitioner<T> {
         long publishTime = getPublishTime(sinkRecord, nowInMillis);
         long parsed = (publishTime / partitionDuration) * partitionDuration;
         String timeString = dateTimeFormatter.format(Instant.ofEpochMilli(parsed).atOffset(ZoneOffset.UTC));
-        final String result = timeString
-                + PATH_SEPARATOR
-                + getMessageOffset(sinkRecord);
-        return result;
+        return timeString;
     }
 
     private long getPublishTime(Record<T> sinkRecord, Long defaultTime) {

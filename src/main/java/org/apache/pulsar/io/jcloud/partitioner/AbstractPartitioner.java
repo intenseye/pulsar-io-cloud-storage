@@ -69,8 +69,15 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
             TopicName newTopicName = TopicName.get(topicName.getPartitionedTopicName());
             joinList.add(newTopicName.getLocalName());
         }
-        joinList.add(encodedPartition);
+        if (StringUtils.isNotBlank(encodedPartition)) {
+            joinList.add(encodedPartition);
+        }
         return StringUtils.join(joinList, PATH_SEPARATOR);
+    }
+
+    @Override
+    public String getBaseFileName(Record<T> record) {
+        return String.valueOf(getMessageOffset(record));
     }
 
     protected long getMessageOffset(Record<T> record) {
