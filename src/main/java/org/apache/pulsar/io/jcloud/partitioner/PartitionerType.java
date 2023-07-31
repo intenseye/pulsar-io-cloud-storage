@@ -24,5 +24,6 @@ package org.apache.pulsar.io.jcloud.partitioner;
 public enum PartitionerType {
     PARTITION,
     TIME,
-    FIELDS;
+    FIELDS,
+    COMBINED;
 }

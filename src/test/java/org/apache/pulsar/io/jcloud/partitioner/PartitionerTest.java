@@ -97,6 +97,15 @@ public class PartitionerTest extends TestCase {
         fieldsConfig.setFieldsPartitionIgnoreMissing(true);
         FieldsPartitioner<Object> fieldsPartitioner = new FieldsPartitioner<>();
         fieldsPartitioner.configure(fieldsConfig);
+
+        BlobStoreAbstractConfig combinedConfig = new BlobStoreAbstractConfig();
+        combinedConfig.setCombinedPartitionList(Arrays.asList("fields", "time"));
+        combinedConfig.setFieldsPartitionList(Arrays.asList("userId", "region"));
+        combinedConfig.setTimePartitionDuration("1d");
+        combinedConfig.setTimePartitionPattern("yyyy-MM-dd");
+        CombinedPartitioner<Object> combinedPartitioner = new CombinedPartitioner<>();
+        combinedPartitioner.configure(combinedConfig);
+
         return new Object[][]{
                 new Object[]{
                         simplePartitioner,
@@ -141,6 +150,13 @@ public class PartitionerTest extends TestCase {
                         getRecordWith(Map.of("userId", "user1"))
                 },
                 new Object[]{
+                        combinedPartitioner,
+                        "user1/US/2020-09-08",
+                        "public/default/test/user1/US/2020-09-08",
+                        "3221225506",
+                        getRecordWith(Map.of("userId", "user1", "region", "US"))
+                },
+                new Object[]{
                         simplePartitioner,
                         "",
                         "public/default/test-partition-1",
@@ -181,6 +197,13 @@ public class PartitionerTest extends TestCase {
                         "public/default/test-partition-1/2020-09-08-14",
                         "3221225506",
                         getPartitionedTopic()
+                },
+                new Object[]{
+                        combinedPartitioner,
+                        "user1/US/2020-09-08",
+                        "public/default/test-partition-1/user1/US/2020-09-08",
+                        "3221225506",
+                        getPartitionedRecordWith(Map.of("userId", "user1", "region", "US"))
                 },
         };
     }

@@ -51,6 +51,7 @@ import org.apache.pulsar.io.jcloud.format.Format;
 import org.apache.pulsar.io.jcloud.format.InitConfiguration;
 import org.apache.pulsar.io.jcloud.format.JsonFormat;
 import org.apache.pulsar.io.jcloud.format.ParquetFormat;
+import org.apache.pulsar.io.jcloud.partitioner.CombinedPartitioner;
 import org.apache.pulsar.io.jcloud.partitioner.FieldsPartitioner;
 import org.apache.pulsar.io.jcloud.partitioner.Partitioner;
 import org.apache.pulsar.io.jcloud.partitioner.PartitionerType;
@@ -136,6 +137,9 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                 break;
             case FIELDS:
                 partitioner = new FieldsPartitioner<>();
+                break;
+            case COMBINED:
+                partitioner = new CombinedPartitioner<>();
                 break;
             case PARTITION:
             default:

@@ -103,6 +103,8 @@ public class BlobStoreAbstractConfig implements Serializable {
     private List<String> fieldsPartitionList;
     private boolean fieldsPartitionIgnoreMissing = true;
 
+    private List<String> combinedPartitionList;
+
     private long maxBatchBytes = 10_000_000;
     private int batchSize = 10;
     private int pendingQueueSize = -1;
@@ -151,26 +153,19 @@ public class BlobStoreAbstractConfig implements Serializable {
                             .collect(Collectors.joining(","))
             );
         }
-        if (PartitionerType.TIME.name().equalsIgnoreCase(partitionerType)) {
-            if (StringUtils.isNoneBlank(timePartitionPattern)) {
-                LOGGER.info("test timePartitionPattern is ok {} {}",
-                        timePartitionPattern,
-                        DateTimeFormatter.ofPattern(timePartitionPattern).format(Instant.now().atOffset(ZoneOffset.UTC))
-                );
-            }
-            if (StringUtils.isNoneBlank(timePartitionDuration)) {
-                checkArgument(Pattern.matches("^\\d+[dhDHms]?$", timePartitionDuration),
-                        "timePartitionDuration invalid.");
-            }
-        }
-        if (PartitionerType.FIELDS.name().equalsIgnoreCase(partitionerType)) {
-            checkNotNull(fieldsPartitionList, "fieldsPartitionList not set.");
-            checkArgument(fieldsPartitionList.size() > 0,
-                    "fieldsPartitionList property must contain at least one field name.");
+        if (PartitionerType.COMBINED.name().equalsIgnoreCase(partitionerType)) {
+            checkNotNull(combinedPartitionList, "combinedPartitionList not set.");
+            checkArgument(combinedPartitionList.size() > 0,
+                    "combinedPartitionList property must contain at least one field name.");
             // check if any of them is empty
-            checkArgument(fieldsPartitionList.stream().allMatch(StringUtils::isNotBlank),
-                    "fieldsPartitionList property must not contain empty field names.");
-            LOGGER.info("test fieldsPartitionList is ok {}", fieldsPartitionList);
+            checkArgument(combinedPartitionList.stream().allMatch(StringUtils::isNotBlank),
+                    "combinedPartitionList property must not contain empty field names.");
+            LOGGER.info("test combinedPartitionList is ok {}", combinedPartitionList);
+            for (String subPartitionType : combinedPartitionList) {
+                validateConfigForPartitionType(subPartitionType);
+            }
+        } else {
+            validateConfigForPartitionType(partitionerType);
         }
 
         checkArgument(batchSize > 0, "batchSize must be a positive integer.");
@@ -201,6 +196,38 @@ public class BlobStoreAbstractConfig implements Serializable {
         checkArgument(pendingQueueSize > 0, "pendingQueueSize must be a positive integer.");
         checkArgument(pendingQueueSize >= batchSize, "pendingQueueSize must be larger than or "
                 + "equal to batchSize");
+    }
+
+    private void validateConfigForPartitionType(String partitionerType) {
+        if (PartitionerType.TIME.name().equalsIgnoreCase(partitionerType)) {
+            validateTimePartitionConfig();
+        }
+        if (PartitionerType.FIELDS.name().equalsIgnoreCase(partitionerType)) {
+            validateFieldsPartitionConfig();
+        }
+    }
+
+    private void validateFieldsPartitionConfig() {
+        checkNotNull(fieldsPartitionList, "fieldsPartitionList not set.");
+        checkArgument(fieldsPartitionList.size() > 0,
+                "fieldsPartitionList property must contain at least one field name.");
+        // check if any of them is empty
+        checkArgument(fieldsPartitionList.stream().allMatch(StringUtils::isNotBlank),
+                "fieldsPartitionList property must not contain empty field names.");
+        LOGGER.info("test fieldsPartitionList is ok {}", fieldsPartitionList);
+    }
+
+    private void validateTimePartitionConfig() {
+        if (StringUtils.isNoneBlank(timePartitionPattern)) {
+            LOGGER.info("test timePartitionPattern is ok {} {}",
+                    timePartitionPattern,
+                    DateTimeFormatter.ofPattern(timePartitionPattern).format(Instant.now().atOffset(ZoneOffset.UTC))
+            );
+        }
+        if (StringUtils.isNoneBlank(timePartitionDuration)) {
+            checkArgument(Pattern.matches("^\\d+[dhDHms]?$", timePartitionDuration),
+                    "timePartitionDuration invalid.");
+        }
     }
 
     private static boolean hasURIScheme(String endpoint) {
