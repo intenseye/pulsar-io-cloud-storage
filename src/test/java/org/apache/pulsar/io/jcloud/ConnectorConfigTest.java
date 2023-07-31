@@ -137,7 +137,50 @@ public class ConnectorConfigTest {
     }
 
     @Test
-    public void fieldsPartitionDurationTest() throws IOException {
+    public void combinedPartitionTest() throws IOException {
+        Map<String, Object> config = new HashMap<>();
+        config.put("provider", PROVIDER_AWSS3);
+        config.put("accessKeyId", "aws-s3");
+        config.put("secretAccessKey", "aws-s3");
+        config.put("bucket", "testbucket");
+        config.put("region", "localhost");
+        config.put("endpoint", "https://us-standard");
+        config.put("formatType", "avro");
+        config.put("partitionerType", "combined");
+        config.put("combinedPartitionList", Arrays.asList("time", "fields", "partition"));
+        config.put("fieldsPartitionList", Arrays.asList("field1", "field2"));
+        config.put("batchSize", 10);
+        try {
+            CloudStorageSinkConfig.load(config).validate();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        config.remove("combinedPartitionList");
+        Assert.assertThrows(NullPointerException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("combinedPartitionList", Collections.<String>emptyList());
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("combinedPartitionList", Arrays.asList("time", ""));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("combinedPartitionList", Arrays.asList("time", "fields", "partition", "extra"));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        config.put("combinedPartitionList", Arrays.asList("time", null));
+        Assert.assertThrows(IllegalArgumentException.class, CloudStorageSinkConfig.load(config)::validate);
+
+        try {
+            config.put("combinedPartitionList", Arrays.asList("tImE", "fIeLdS", "pArTiTiOn"));
+            CloudStorageSinkConfig.load(config).validate();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+    }
+
+    @Test
+    public void fieldsPartitionTest() throws IOException {
         Map<String, Object> config = new HashMap<>();
         config.put("provider", PROVIDER_AWSS3);
         config.put("accessKeyId", "aws-s3");
@@ -322,11 +365,14 @@ public class ConnectorConfigTest {
         config.put("region", "localhost");
         config.put("endpoint", "https://localhost");
         config.put("formatType", "bytes");
+        config.put("fieldsPartitionList", Arrays.asList("field1", "field2"));
+        config.put("combinedPartitionList", Arrays.asList("fields", "time"));
         CloudStorageSinkConfig cloudStorageSinkConfig = CloudStorageSinkConfig.load(config);
         try {
             cloudStorageSinkConfig.validate();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("partitionerType property not set properly, available options: partition,time,fields",
+            Assert.assertEquals(
+                    "partitionerType property not set properly, available options: partition,time,fields,combined",
                     e.getMessage());
         }
         config.put("partitionerType", "invalid");
@@ -334,7 +380,8 @@ public class ConnectorConfigTest {
         try {
             cloudStorageSinkConfig.validate();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("partitionerType property not set properly, available options: partition,time,fields",
+            Assert.assertEquals(
+                    "partitionerType property not set properly, available options: partition,time,fields,combined",
                     e.getMessage());
         }
         config.put("partitionerType", "default");

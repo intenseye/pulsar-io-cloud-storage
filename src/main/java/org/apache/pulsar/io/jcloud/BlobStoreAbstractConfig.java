@@ -31,8 +31,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.EnumUtils;
@@ -158,8 +160,17 @@ public class BlobStoreAbstractConfig implements Serializable {
             checkArgument(combinedPartitionList.size() > 0,
                     "combinedPartitionList property must contain at least one field name.");
             // check if any of them is empty
-            checkArgument(combinedPartitionList.stream().allMatch(StringUtils::isNotBlank),
-                    "combinedPartitionList property must not contain empty field names.");
+            Set<String> validNames = Arrays.stream(PartitionerType.values())
+                .filter(pt -> pt != PartitionerType.COMBINED)
+                .map(PartitionerType::name)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+            Stream<String> subPartitionerTypesLower = combinedPartitionList.stream()
+                .map(String::valueOf)
+                .map(String::toLowerCase);
+            checkArgument(subPartitionerTypesLower.allMatch(validNames::contains),
+                    "combinedPartitionList property must only contain one of valid sub-partitioner types: %s",
+                    validNames);
             LOGGER.info("test combinedPartitionList is ok {}", combinedPartitionList);
             for (String subPartitionType : combinedPartitionList) {
                 validateConfigForPartitionType(subPartitionType);
